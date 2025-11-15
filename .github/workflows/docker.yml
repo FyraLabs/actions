@@ -83,8 +83,8 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }},push-by-digest=true,name-canonical=true,push=${{ inputs.publish }}
-          cache-from: type=gha,scope=build-${{ env.PLATFORM_PAIR }}
-          cache-to: type=gha,mode=max,scope=build-${{ env.PLATFORM_PAIR }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Export digest
         if: inputs.publish
@@ -143,14 +143,18 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
 
       - name: Create manifest list and push
+        id: manifest
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
               $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}@sha256:%s ' *)
 
       - name: Inspect image
+        id: inspect
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.meta.outputs.version }} --raw | jq -r '.manifests[0].digest'
+          digest=$(docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:${{ steps.meta.outputs.version }} --raw | sha256sum | awk '{print "sha256:" $1}')
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
 
       # Install the cosign tool
       # https://github.com/sigstore/cosign-installer
@@ -166,11 +170,12 @@ jobs:
         env:
           # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
           TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.inspect.outputs.digest }}
         # This step uses the identity token to provision an ephemeral certificate
         # against the sigstore community Fulcio instance.
         run: |
           images=""
           for tag in ${TAGS}; do
-            images+="${tag}@${{ steps.meta.outputs.digest }} "
+            images+="${tag}@${DIGEST} "
           done
           echo "${images}" | xargs -n 1 cosign sign --yes
