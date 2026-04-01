@@ -41,6 +41,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # v1.94.1
         with:
+          toolchain: stable
           components: rustfmt
 
       - name: Run rustfmt
@@ -57,6 +58,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # v1.94.1
         with:
+          toolchain: stable
           components: clippy
 
       - name: Install required cargo
@@ -89,6 +91,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # v1.94.1
+        with:
+          toolchain: stable
 
       - name: Build
         run: cargo build --verbose ${{ inputs.test-cargo-flags }}
