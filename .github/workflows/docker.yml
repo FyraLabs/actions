@@ -79,6 +79,7 @@ jobs:
           tags: |
             type=schedule
             type=schedule,pattern=${{github.ref_name}}-{{date 'X'}}
+            type=schedule,pattern=nightly-{{date 'X'}}
             type=ref,event=branch
             type=ref,event=tag
             type=ref,event=pr
