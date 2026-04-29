@@ -97,7 +97,7 @@ jobs:
           toolchain: stable
 
       - name: Fetch
-        run: cargo fetch --locked
+        run: cargo fetch --locked --verbose
 
       - name: Build
         run: cargo build --verbose --frozen ${{ inputs.test-cargo-flags }}
