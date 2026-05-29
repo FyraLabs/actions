@@ -64,7 +64,7 @@ jobs:
           components: clippy
 
       - name: Install required cargo
-        run: cargo install clippy-sarif sarif-fmt
+        run: cargo install clippy-sarif sarif-fmt --verbose
 
       - name: Run rust-clippy
         run: cargo clippy
@@ -97,7 +97,7 @@ jobs:
           toolchain: stable
 
       - name: Fetch
-        run: cargo fetch --locked --verbose
+        run: cargo fetch --verbose --locked
 
       - name: Build
         run: cargo build --verbose --frozen ${{ inputs.test-cargo-flags }}
