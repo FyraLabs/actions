@@ -27,6 +27,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_TERM_VERBOSE: true
 
 jobs:
   rustfmt:
@@ -64,11 +65,11 @@ jobs:
           components: clippy
 
       - name: Install required cargo
-        run: cargo install clippy-sarif sarif-fmt --verbose
+        run: cargo install clippy-sarif sarif-fmt
 
       - name: Run rust-clippy
         run: cargo clippy
-          --all-features --verbose
+          --all-features
           --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
         continue-on-error: true
 
@@ -97,10 +98,10 @@ jobs:
           toolchain: stable
 
       - name: Fetch
-        run: cargo fetch --verbose --locked
+        run: cargo fetch --locked
 
       - name: Build
-        run: cargo build --verbose --frozen ${{ inputs.test-cargo-flags }}
+        run: cargo build --frozen ${{ inputs.test-cargo-flags }}
 
       - name: Run tests
-        run: cargo test --verbose ${{ inputs.test-cargo-flags }}
+        run: cargo test ${{ inputs.test-cargo-flags }}
