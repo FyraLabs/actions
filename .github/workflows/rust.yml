@@ -24,6 +24,11 @@ on:
         required: false
         default: ""
         type: string
+      test-riscv-rva23:
+        description: "Whether to compile the tests and release binaries for RISC-V RVA23"
+        required: false
+        default: false
+        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -107,3 +112,44 @@ jobs:
 
       - name: Run tests
         run: cargo test ${{ inputs.test-cargo-flags }}
+
+  test-riscv-rva23:
+    if: inputs.test-riscv-rva23 && ((github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Cache Rust dependencies and build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build image
+        run: podman build -t odorobo-builder:rva23 .
+
+      - name: Build binaries
+        run: podman run --rm -v ${{ github.workspace }}:/code -w /code odorobo-builder:rva23 cargo build --release --verbose
+
+      - name: Upload artifact - agent
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          archive: false
+          name: odorobo-agent-riscv_rva23
+          path: target/riscv64a23-unknown-linux-gnu/release/odorobo-agent
+
+      - name: Upload artifact - odoroboctl
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          archive: false
+          name: odoroboctl-riscv_rva23
+          path: target/riscv64a23-unknown-linux-gnu/release/odoroboctl
+
+      - name: Build tests
+        run: podman run --rm -v ${{ github.workspace }}:/code -w /code odorobo-builder:rva23 cargo test --verbose --no-run
