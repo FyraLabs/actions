@@ -167,11 +167,12 @@ jobs:
 
       - name: Build binaries
         run: |
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "$GITHUB_WORKSPACE/target"
           podman run --rm \
-            -v "${{ github.workspace }}:/code" \
+            -v "$GITHUB_WORKSPACE:/code" \
             -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
             -v "${HOME}/.cargo/git:/root/.cargo/git" \
-            -v "${{ github.workspace }}/target:/code/target" \
+            -v "$GITHUB_WORKSPACE/target:/code/target" \
             -w /code \
             "${{ inputs.test-riscv-builder-image }}" cargo build --release --verbose
 
@@ -185,10 +186,11 @@ jobs:
 
       - name: Build tests
         run: |
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "$GITHUB_WORKSPACE/target"
           podman run --rm \
-            -v "${{ github.workspace }}:/code" \
+            -v "$GITHUB_WORKSPACE:/code" \
             -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
             -v "${HOME}/.cargo/git:/root/.cargo/git" \
-            -v "${{ github.workspace }}/target:/code/target" \
+            -v "$GITHUB_WORKSPACE/target:/code/target" \
             -w /code \
             "${{ inputs.test-riscv-builder-image }}" cargo test --release --verbose --no-run
