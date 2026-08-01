@@ -32,7 +32,7 @@ on:
       test-riscv-builder-image:
         description: "Container image used to cross-compile for RISC-V RVA23"
         required: false
-        default: ghcr.io/fyralabs/rva23-builder:latest
+        default: ghcr.io/fyralabs/rva23-builder@sha256:206d17485eb31e7b7aaad2fc8563471e71e0815574e15dd1328b97fc56696827
         type: string
       test-riscv-builder-context:
         description: "Optional custom container build context for the RVA23 builder image"
