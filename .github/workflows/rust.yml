@@ -158,6 +158,9 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Prepare Cargo mount points
+        run: mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "${{ github.workspace }}/target"
+
       - name: Build custom image
         if: inputs.test-riscv-builder-context != ''
         run: podman build -t "${{ inputs.test-riscv-builder-image }}" "${{ inputs.test-riscv-builder-context }}"
