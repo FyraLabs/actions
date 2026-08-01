@@ -29,6 +29,21 @@ on:
         required: false
         default: false
         type: boolean
+      test-riscv-builder-image:
+        description: "Container image used to cross-compile for RISC-V RVA23"
+        required: false
+        default: riscv-rva23-builder
+        type: string
+      test-riscv-artifact-name:
+        description: "Optional name for the RVA23 build artifact"
+        required: false
+        default: ""
+        type: string
+      test-riscv-artifact-paths:
+        description: "Optional newline-separated paths to upload from the RVA23 build"
+        required: false
+        default: ""
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
@@ -128,28 +143,37 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
+            ~/.cargo/git/checkouts/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build image
-        run: podman build -t odorobo-builder:rva23 .
+        run: podman build -t "${{ inputs.test-riscv-builder-image }}" .
 
       - name: Build binaries
-        run: podman run --rm -v ${{ github.workspace }}:/code -w /code odorobo-builder:rva23 cargo build --release --verbose
+        run: |
+          podman run --rm \
+            -v "${{ github.workspace }}:/code" \
+            -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
+            -v "${HOME}/.cargo/git:/root/.cargo/git" \
+            -v "${{ github.workspace }}/target:/code/target" \
+            -w /code \
+            "${{ inputs.test-riscv-builder-image }}" cargo build --release --verbose
 
-      - name: Upload artifact - agent
+      - name: Upload RVA23 artifacts
+        if: inputs.test-riscv-artifact-name != '' && inputs.test-riscv-artifact-paths != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           archive: false
-          name: odorobo-agent-riscv_rva23
-          path: target/riscv64a23-unknown-linux-gnu/release/odorobo-agent
-
-      - name: Upload artifact - odoroboctl
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          archive: false
-          name: odoroboctl-riscv_rva23
-          path: target/riscv64a23-unknown-linux-gnu/release/odoroboctl
+          name: ${{ inputs.test-riscv-artifact-name }}
+          path: ${{ inputs.test-riscv-artifact-paths }}
 
       - name: Build tests
-        run: podman run --rm -v ${{ github.workspace }}:/code -w /code odorobo-builder:rva23 cargo test --verbose --no-run
+        run: |
+          podman run --rm \
+            -v "${{ github.workspace }}:/code" \
+            -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
+            -v "${HOME}/.cargo/git:/root/.cargo/git" \
+            -v "${{ github.workspace }}/target:/code/target" \
+            -w /code \
+            "${{ inputs.test-riscv-builder-image }}" cargo test --release --verbose --no-run
