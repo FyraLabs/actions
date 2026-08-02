@@ -24,6 +24,11 @@ on:
         required: false
         default: ""
         type: string
+      test-cache:
+        description: "Whether to cache Cargo dependencies and build artifacts for the normal test job"
+        required: false
+        default: false
+        type: boolean
       test-riscv-rva23:
         description: "Whether to compile the tests and release binaries for RISC-V RVA23"
         required: false
@@ -124,6 +129,19 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Cache Rust dependencies and build artifacts
+        if: inputs.test-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/git/checkouts/
+            target/
+          key: ${{ runner.os }}-test-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Fetch
         run: cargo fetch --locked
 
@@ -156,7 +174,7 @@ jobs:
             ~/.cargo/git/db/
             ~/.cargo/git/checkouts/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-rva23-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Prepare Cargo mount points
         run: mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "${{ github.workspace }}/target"
