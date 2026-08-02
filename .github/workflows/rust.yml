@@ -180,7 +180,6 @@ jobs:
         if: inputs.test-riscv-artifact-name != '' && inputs.test-riscv-artifact-paths != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          archive: false
           name: ${{ inputs.test-riscv-artifact-name }}
           path: ${{ inputs.test-riscv-artifact-paths }}
 
