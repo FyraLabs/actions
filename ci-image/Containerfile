@@ -1,0 +1,22 @@
+FROM ghcr.io/terrapkg/builder:f44
+
+# Keep the image useful for both the Rust and C++ reusable checks. Project-specific
+# dependencies should still be supplied by the workflow inputs.
+RUN dnf install --assumeyes --setopt=install_weak_deps=False \
+    cargo \
+    ccache \
+    clang \
+    clang-tools-extra \
+    cmake \
+    gcc-c++ \
+    git \
+    make \
+    ninja-build \
+    pkgconf-pkg-config \
+    rust \
+    rustfmt \
+    && dnf clean all
+
+ENV CCACHE_DIR=/root/.cache/ccache \
+    CARGO_TERM_COLOR=always \
+    CARGO_HOME=/root/.cargo
