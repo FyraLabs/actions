@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: yesolutions/mirror-action@1708f16cdb28634fd3ba10c5c79abc91f5578a14 # v0.7.0
         with:
           REMOTE: "https://codeberg.org/${{ github.repository }}.git"

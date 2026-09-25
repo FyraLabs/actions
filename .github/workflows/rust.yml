@@ -12,7 +12,7 @@ on:
       test-container:
         description: "The container configuration for the test job, in JSON"
         required: false
-        default: "null"
+        default: '{"image":"ghcr.io/fyralabs/ci:f44"}'
         type: string
       test-pre:
         description: "Command to run before tests are executed, useful for installing system deps"
@@ -141,6 +141,8 @@ jobs:
             ~/.cargo/git/checkouts/
             target/
           key: ${{ runner.os }}-test-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-test-cargo-
 
       - name: Fetch
         run: cargo fetch --locked

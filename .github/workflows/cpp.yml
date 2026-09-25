@@ -41,7 +41,7 @@ jobs:
     name: C++ CI
     runs-on: ubuntu-26.04
     container:
-      image: ${{ inputs.container }}
+      image: ghcr.io/fyralabs/ci:f44
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,7 +51,22 @@ jobs:
 
       - name: Install toolchain and dependencies
         run: |
-          dnf install --assumeyes --setopt=install_weak_deps=False ${{ inputs.packages }} gcc-c++ python3-pip cppcheck codecheck-sarif clang-tools-extra cmake meson
+          dnf install --assumeyes --setopt=install_weak_deps=False ${{ inputs.packages }} gcc-c++ ccache python3-pip cppcheck codecheck-sarif clang-tools-extra cmake meson
+
+      - name: Cache compiler output
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-cpp-ccache-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake', '**/meson.build', '**/meson_options.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cpp-ccache-
+
+      - name: Configure ccache
+        run: |
+          ccache --set-config=cache_dir="$HOME/.cache/ccache"
+          ccache --set-config=max_size=1G
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
 
       - name: Check formatting
         run: |
