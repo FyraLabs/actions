@@ -28,6 +28,10 @@ on:
         required: false
         type: string
         default: "*.cpp"
+      test-command:
+        description: Command used to test the project (optional)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -97,6 +101,11 @@ jobs:
         with:
           sarif_file: build/codecheck.sarif
           category: codecheck
+
+      - name: Run build tests
+        if: inputs.test-command != ''
+        id: test
+        run: ${{ inputs.test-command }}
 
       - name: Fail if static analysis found issues
         if: steps.clang-tidy.outcome == 'failure' || steps.cppcheck.outcome == 'failure'
