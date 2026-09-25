@@ -48,7 +48,7 @@ jobs:
 
       - name: Install toolchain and dependencies
         run: |
-          dnf install --assumeyes --setopt=install_weak_deps=False ${{ inputs.packages }} gcc-c++ python3-pip cppcheck codecheck-sarif clang-tools-extra cmake
+          dnf install --assumeyes --setopt=install_weak_deps=False ${{ inputs.packages }} gcc-c++ python3-pip cppcheck codecheck-sarif clang-tools-extra cmake meson
 
       - name: Check formatting
         run: |
