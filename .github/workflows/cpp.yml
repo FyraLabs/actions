@@ -1,0 +1,103 @@
+name: C++ CI
+
+on:
+  workflow_call:
+    inputs:
+      container:
+        description: Container image used for the job
+        required: false
+        type: string
+        default: ghcr.io/terrapkg/builder:f44
+      packages:
+        description: Space-separated dnf packages required by the project
+        required: false
+        type: string
+        default: gcc-c++ python3-pip
+      configure-command:
+        description: Command used to configure the project
+        required: false
+        type: string
+        default: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      build-command:
+        description: Command used to build the project
+        required: false
+        type: string
+        default: cmake --build build --parallel
+      source-glob:
+        description: Git pathspec used to select C++ source files
+        required: false
+        type: string
+        default: "*.cpp"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  cpp-ci:
+    name: C++ CI
+    runs-on: ubuntu-26.04
+    container:
+      image: ${{ inputs.container }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install toolchain and dependencies
+        run: |
+          dnf install --assumeyes --setopt=install_weak_deps=False ${{ inputs.packages }} cppcheck codecheck-sarif clang-tools-extra cmake
+
+      - name: Check formatting
+        run: |
+          git ls-files -z -- '*.cpp' '*.h' '*.hpp' \
+            | xargs -0 -r clang-format --dry-run --Werror
+
+      - name: Configure
+        run: ${{ inputs.configure-command }}
+
+      - name: Build
+        run: ${{ inputs.build-command }}
+
+      - name: Run cppcheck and export SARIF
+        id: cppcheck
+        continue-on-error: true
+        run: >-
+          cppcheck
+          --project=build/compile_commands.json
+          --enable=warning,style,performance,portability
+          --error-exitcode=1
+          --suppress=missingIncludeSystem
+          --output-format=sarif
+          --quiet
+          > build/cppcheck.sarif
+
+      - name: Run clang-tidy
+        id: clang-tidy
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy \
+            --header-filter="^${GITHUB_WORKSPACE}/" \
+            --extra-arg=-Wno-unknown-warning-option \
+            -p build \
+            $(git ls-files -- '${{ inputs.source-glob }}') 2>&1 \
+            | tee build/clang-tidy.txt
+
+      - name: Convert clang-tidy findings to SARIF
+        if: always()
+        run: codecheck convert-clang-tidy --root . build/clang-tidy.txt > build/clang-tidy.sarif
+
+      - name: Merge analysis SARIF
+        if: always()
+        run: codecheck merge build/clang-tidy.sarif build/cppcheck.sarif --out build/codecheck.sarif
+
+      - name: Upload analysis SARIF
+        if: always() && hashFiles('build/codecheck.sarif') != ''
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          sarif_file: build/codecheck.sarif
+          category: codecheck
+
+      - name: Fail if static analysis found issues
+        if: steps.clang-tidy.outcome == 'failure' || steps.cppcheck.outcome == 'failure'
+        run: exit 1
