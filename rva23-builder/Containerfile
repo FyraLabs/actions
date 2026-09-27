@@ -6,7 +6,8 @@ RUN apk add \
     musl-dev \
     protoc \
     rustup \
-    zig
+    zig \
+    perl-dev
 
 RUN rustup-init \
     --profile minimal \
