@@ -1,23 +1,39 @@
 FROM alpine:3.23.3
 
+ARG OPENSSL_VERSION=3.4.2
+
 RUN apk add \
     bash \
+    ca-certificates \
     gcc \
     musl-dev \
     protoc \
     rustup \
     zig \
-    perl-dev \
-    openssl-dev
+    perl \
+    make \
+    tar \
+    wget
+
+COPY zig-cc-rva23.sh /usr/local/bin/zig-cc-rva23
+
+RUN set -eux; \
+    wget -O /tmp/openssl.tar.gz "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz"; \
+    mkdir /tmp/openssl; \
+    tar -xzf /tmp/openssl.tar.gz --strip-components=1 -C /tmp/openssl; \
+    cd /tmp/openssl; \
+    CC=/usr/local/bin/zig-cc-rva23 ./Configure linux-generic64 no-shared no-tests --prefix=/opt/openssl-riscv64; \
+    make -j2; \
+    make install_sw; \
+    rm -rf /tmp/openssl /tmp/openssl.tar.gz
 
 RUN rustup-init \
     --profile minimal \
     --target riscv64a23-unknown-linux-gnu \
     -y
 
-COPY zig-cc-rva23.sh /usr/local/bin/zig-cc-rva23
-
 ENV CARGO_BUILD_TARGET="riscv64a23-unknown-linux-gnu"
 ENV PATH="/root/.cargo/bin:$PATH"
 ENV CC_riscv64a23_unknown_linux_gnu="/usr/local/bin/zig-cc-rva23"
 ENV CARGO_TARGET_RISCV64A23_UNKNOWN_LINUX_GNU_RUSTFLAGS="-C linker=/usr/local/bin/zig-cc-rva23"
+ENV OPENSSL_DIR="/opt/openssl-riscv64"
