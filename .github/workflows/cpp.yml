@@ -31,6 +31,11 @@ on:
         description: Command used to test the project (optional)
         required: false
         type: string
+      cppcheck-extra-args:
+        description: Additional cppcheck arguments
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -90,6 +95,7 @@ jobs:
           --suppress=missingIncludeSystem
           --output-format=sarif
           --quiet
+          ${{ inputs.cppcheck-extra-args }}
           > build/cppcheck.sarif
 
       - name: Run clang-tidy
