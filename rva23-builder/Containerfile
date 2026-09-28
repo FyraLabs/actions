@@ -8,7 +8,7 @@ RUN apk add \
     rustup \
     zig \
     perl-dev \
-    libssl3
+    openssl-dev
 
 RUN rustup-init \
     --profile minimal \
