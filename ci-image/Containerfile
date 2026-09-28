@@ -15,6 +15,7 @@ RUN dnf install --assumeyes --setopt=install_weak_deps=False \
     pkgconf-pkg-config \
     rust \
     rustfmt \
+    openssl-devel \
     && dnf clean all
 
 ENV CCACHE_DIR=/root/.cache/ccache \
