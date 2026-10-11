@@ -1,5 +1,6 @@
 name: Rust
-
+permissions:
+  contents: read
 on:
   workflow_call:
     inputs:
@@ -11,7 +12,7 @@ on:
       test-container:
         description: "The container configuration for the test job, in JSON"
         required: false
-        default: "null"
+        default: '{"image":"ghcr.io/fyralabs/ci:f44"}'
         type: string
       test-pre:
         description: "Command to run before tests are executed, useful for installing system deps"
@@ -23,9 +24,40 @@ on:
         required: false
         default: ""
         type: string
+      test-cache:
+        description: "Whether to cache Cargo dependencies and build artifacts for the normal test job"
+        required: false
+        default: false
+        type: boolean
+      test-riscv-rva23:
+        description: "Whether to compile the tests and release binaries for RISC-V RVA23"
+        required: false
+        default: false
+        type: boolean
+      test-riscv-builder-image:
+        description: "Container image used to cross-compile for RISC-V RVA23"
+        required: false
+        default: ghcr.io/fyralabs/rva23-builder@sha256:206d17485eb31e7b7aaad2fc8563471e71e0815574e15dd1328b97fc56696827
+        type: string
+      test-riscv-builder-context:
+        description: "Optional custom container build context for the RVA23 builder image"
+        required: false
+        default: ""
+        type: string
+      test-riscv-artifact-name:
+        description: "Optional name for the RVA23 build artifact"
+        required: false
+        default: ""
+        type: string
+      test-riscv-artifact-paths:
+        description: "Optional newline-separated paths to upload from the RVA23 build"
+        required: false
+        default: ""
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_TERM_VERBOSE: true
 
 jobs:
   rustfmt:
@@ -33,29 +65,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # v1.94.1
         with:
+          toolchain: stable
           components: rustfmt
 
       - name: Run rustfmt
         run: cargo fmt -- --check
   clippy:
+    permissions:
+      security-events: write
     if: (github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # v1.94.1
         with:
+          toolchain: stable
           components: clippy
 
       - name: Install required cargo
@@ -66,9 +102,11 @@ jobs:
           --all-features
           --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
         continue-on-error: true
+        env:
+          CARGO_TERM_VERBOSE: false
 
       - name: Upload analysis results to GitHub
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: rust-clippy-results.sarif
           wait-for-processing: true
@@ -82,15 +120,96 @@ jobs:
         if: ${{ inputs.test-pre != '' }}
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # v1.94.1
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies and build artifacts
+        if: inputs.test-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/git/checkouts/
+            target/
+          key: ${{ runner.os }}-test-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-test-cargo-
+
+      - name: Fetch
+        run: cargo fetch --locked
 
       - name: Build
-        run: cargo build --verbose ${{ inputs.test-cargo-flags }}
+        run: cargo build --frozen ${{ inputs.test-cargo-flags }}
 
       - name: Run tests
-        run: cargo test --verbose ${{ inputs.test-cargo-flags }}
+        run: cargo test ${{ inputs.test-cargo-flags }}
+
+  test-riscv-rva23:
+    if: inputs.test-riscv-rva23 && ((github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Log into GHCR for Podman
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Cache Rust dependencies and build artifacts
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/git/checkouts/
+            target/
+          key: ${{ runner.os }}-rva23-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Prepare Cargo mount points
+        run: mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "${{ github.workspace }}/target"
+
+      - name: Build custom image
+        if: inputs.test-riscv-builder-context != ''
+        run: podman build -t "${{ inputs.test-riscv-builder-image }}" "${{ inputs.test-riscv-builder-context }}"
+
+      - name: Build binaries
+        run: |
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "$GITHUB_WORKSPACE/target"
+          podman run --rm \
+            -v "$GITHUB_WORKSPACE:/code" \
+            -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
+            -v "${HOME}/.cargo/git:/root/.cargo/git" \
+            -v "$GITHUB_WORKSPACE/target:/code/target" \
+            -w /code \
+            "${{ inputs.test-riscv-builder-image }}" cargo build --release --verbose
+
+      - name: Upload RVA23 artifacts
+        if: inputs.test-riscv-artifact-name != '' && inputs.test-riscv-artifact-paths != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.test-riscv-artifact-name }}
+          path: ${{ inputs.test-riscv-artifact-paths }}
+
+      - name: Build tests
+        run: |
+          mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git" "$GITHUB_WORKSPACE/target"
+          podman run --rm \
+            -v "$GITHUB_WORKSPACE:/code" \
+            -v "${HOME}/.cargo/registry:/root/.cargo/registry" \
+            -v "${HOME}/.cargo/git:/root/.cargo/git" \
+            -v "$GITHUB_WORKSPACE/target:/code/target" \
+            -w /code \
+            "${{ inputs.test-riscv-builder-image }}" cargo test --release --verbose --no-run
