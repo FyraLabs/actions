@@ -4,15 +4,20 @@ permissions:
 on:
   workflow_call:
     inputs:
-      clippy-pre:
-        description: "Command to run before Clippy is run, useful for installing system deps"
+      clippy-runs-on:
+        description: "The runner type which the Clippy job runs on"
         required: false
-        default: ""
+        default: ubuntu-latest
         type: string
       clippy-container:
         description: "The container configuration for the Clippy job, in JSON"
         required: false
         default: '{"image":"ghcr.io/fyralabs/ci:f44"}'
+        type: string
+      clippy-pre:
+        description: "Command to run before Clippy is run, useful for installing system deps"
+        required: false
+        default: ""
         type: string
       test-runs-on:
         description: "The runner type which the test job runs on"
