@@ -9,6 +9,11 @@ on:
         required: false
         default: ""
         type: string
+      clippy-container:
+        description: "The container configuration for the Clippy job, in JSON"
+        required: false
+        default: '{"image":"ghcr.io/fyralabs/ci:f44"}'
+        type: string
       test-runs-on:
         description: "The runner type which the test job runs on"
         required: false
@@ -87,6 +92,7 @@ jobs:
       security-events: write
     if: (github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)
     runs-on: ubuntu-latest
+    container: ${{ fromJSON(inputs.clippy-container) }}
     steps:
       - name: Run pre script
         run: ${{ inputs.clippy-pre }}
