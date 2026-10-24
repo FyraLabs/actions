@@ -25,6 +25,15 @@ on:
         required: false
         type: string
         default: "digests"
+      build_args:
+        description: "Build arguments, one KEY=value per line (docker/build-push-action build-args)"
+        required: false
+        type: string
+        default: ""
+    outputs:
+        digest:
+          description: "Digest of the published multi-arch image (empty when not publishing)"
+          value: ${{ jobs.merge.outputs.digest }}
 
 env:
   # Use docker.io for Docker Hub if empty
@@ -99,6 +108,7 @@ jobs:
         with:
           context: ${{ inputs.context || '.' }}
           file: ${{ inputs.dockerfile || 'Dockerfile' }}
+          build-args: ${{ inputs.build_args }}
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }},push-by-digest=true,name-canonical=true,push=${{ inputs.publish }}
@@ -125,6 +135,8 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     if: inputs.publish
+    outputs:
+      digest: ${{ steps.inspect.outputs.digest }}
     needs:
       - build-arch
     permissions:
