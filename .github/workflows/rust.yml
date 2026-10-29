@@ -76,7 +76,6 @@ env:
 
 jobs:
   rustfmt:
-    if: (github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -95,7 +94,6 @@ jobs:
   clippy:
     permissions:
       security-events: write
-    if: (github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)
     runs-on: ubuntu-latest
     container: ${{ fromJSON(inputs.clippy-container) }}
     steps:
@@ -131,7 +129,6 @@ jobs:
           sarif_file: rust-clippy-results.sarif
           wait-for-processing: true
   test:
-    if: (github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)
     runs-on: ${{ inputs.test-runs-on }}
     container: ${{ fromJSON(inputs.test-container) }}
     steps:
@@ -174,7 +171,7 @@ jobs:
         run: cargo test ${{ inputs.test-cargo-flags }}
 
   test-riscv-rva23:
-    if: inputs.test-riscv-rva23 && ((github.event_name != 'pull_request' && ! github.event.pull_request.head.repo.fork) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork))
+    if: inputs.test-riscv-rva23
     runs-on: ubuntu-latest
     permissions:
       contents: read
