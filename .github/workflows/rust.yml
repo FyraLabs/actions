@@ -24,6 +24,11 @@ on:
         required: false
         default: "--all-features"
         type: string
+      clippy-cache:
+        description: "Whether to cache Cargo dependencies and build artifacts for the clippy job"
+        required: false
+        default: false
+        type: boolean
       test-runs-on:
         description: "The runner type which the test job runs on"
         required: false
@@ -116,6 +121,21 @@ jobs:
         with:
           toolchain: stable
           components: clippy
+
+      - name: Cache Rust dependencies and build artifacts
+        if: inputs.clippy-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/git/checkouts/
+            target/
+          key: ${{ runner.os }}-clippy-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-clippy-cargo-
 
       - name: Install required cargo
         run: cargo install clippy-sarif sarif-fmt
