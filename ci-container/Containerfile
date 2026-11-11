@@ -20,4 +20,5 @@ RUN dnf install --assumeyes --setopt=install_weak_deps=False \
 
 ENV CCACHE_DIR=/root/.cache/ccache \
     CARGO_TERM_COLOR=always \
+    CARGO_TERM_VERBOSE=true \
     CARGO_HOME=/root/.cargo
